@@ -116,6 +116,7 @@
   .clock-wrap img {
     position: absolute; inset: 0; width: 100%; height: 100%;
     user-select: none; -webkit-user-drag: none;
+    pointer-events: none; /* 回転した針の角がプルダウンのクリックを奪うのを防ぐ */
   }
   .hand {
     transform-origin: 50% 50%;
@@ -150,6 +151,7 @@
       <div class="field">
         <label for="sel-hour">なんじ</label>
         <select id="sel-hour" class="selectBtn">
+          <option value="0" selected>0じ</option>
           <option value="1">1じ</option>
           <option value="2">2じ</option>
           <option value="3">3じ</option>
@@ -161,7 +163,7 @@
           <option value="9">9じ</option>
           <option value="10">10じ</option>
           <option value="11">11じ</option>
-          <option value="12" selected>12じ</option>
+          <option value="12">12じ</option>
         </select>
       </div>
       <div class="field">
@@ -180,7 +182,7 @@
       <img id="hand-short" class="hand" src="clock-hand-short.png" alt="短針">
     </div>
 
-    <p class="readout" id="readout">12 じ ちょうど</p>
+    <p class="readout" id="readout">0 じ ちょうど</p>
 
   </div>
 </div>
@@ -193,22 +195,30 @@
   const readout   = document.getElementById('readout');
   const btnReset  = document.getElementById('btn-reset');
 
-  let curShortDeg = 0;
-  let curLongDeg  = 0;
+  // 12時を基準にした累積の経過分数。
+  // 長針 = 6°/分、短針 = 0.5°/分 なので、常に「長針＝短針×12」の比が保たれ、
+  // 長針が1回転(360°)する間に短針はぴったり30°(1時間分)進む。
+  let curMinutes = 0;
+
+  function render() {
+    handLong .style.transform = `rotate(${curMinutes * 6}deg)`;
+    handShort.style.transform = `rotate(${curMinutes * 0.5}deg)`;
+  }
 
   function setTime(hour, minute) {
-    let targetLong  = minute * 6;
-    let targetShort = (hour % 12) * 30 + minute * 0.5;
+    const targetClock = (hour % 12) * 60 + minute;     // 0〜719分（12時間表示内の位置）
+    const curClock    = ((curMinutes % 720) + 720) % 720;
+    // 必ず前へ進める（時計回り）。同じ時刻なら0で動かない。
+    const delta = (((targetClock - curClock) % 720) + 720) % 720;
 
-    // 常に時計回り (前回より小さい角度なら一周分加算)
-    while (targetLong  < curLongDeg  - 0.001) targetLong  += 360;
-    while (targetShort < curShortDeg - 0.001) targetShort += 360;
+    // 進む分数に応じて所要時間を伸ばし、針の運針スピードを一定に保つ。
+    // 1時間（長針1回転）でおよそ1秒。多めに進むときは最大3.5秒まで。
+    const dur = Math.min(3500, Math.max(350, delta * 16.5));
+    handLong .style.transitionDuration = dur + 'ms';
+    handShort.style.transitionDuration = dur + 'ms';
 
-    curLongDeg  = targetLong;
-    curShortDeg = targetShort;
-
-    handLong .style.transform = `rotate(${curLongDeg}deg)`;
-    handShort.style.transform = `rotate(${curShortDeg}deg)`;
+    curMinutes += delta;
+    render();
 
     readout.textContent = minute === 0
       ? `${hour} じ ちょうど`
@@ -227,12 +237,11 @@
   btnReset.addEventListener('click', () => {
     handLong .style.transition = 'none';
     handShort.style.transition = 'none';
-    curLongDeg = 0; curShortDeg = 0;
-    handLong .style.transform = 'rotate(0deg)';
-    handShort.style.transform = 'rotate(0deg)';
-    selHour.value = '12';
+    curMinutes = 0;
+    render();
+    selHour.value = '0';
     selMin.value = '0';
-    readout.textContent = '12 じ ちょうど';
+    readout.textContent = '0 じ ちょうど';
     requestAnimationFrame(() => {
       handLong .style.transition = '';
       handShort.style.transition = '';
@@ -240,7 +249,7 @@
   });
 
   // 初期表示
-  setTime(12, 0);
+  setTime(0, 0);
 </script>
 </body>
 </html>
