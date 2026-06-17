@@ -1,402 +1,408 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>なんじ とけい（ぜんぶのふん）</title>
-<style>
-  :root {
-    --bg: #f7f7f7;
-    --panel: #ffffff;
-    --shadow: 0 8px 20px rgba(0,0,0,.10);
-    --radius: 16px;
-    --dark: #111;
-    --soft: #ececec;
-    --softer: #f1f1f1;
-    --muted: #666;
-  }
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>とけいビンゴ（なんじ・なんじはん）</title>
+  <style>
+    :root{
+      --bg:#f7f7f7;
+      --panel:#ffffff;
+      --shadow:0 8px 20px rgba(0,0,0,.10);
+      --radius:16px;
+      --dark:#111;
+      --soft:#ececec;
+      --muted:#666;
+      --accent:#2b66ff;
+      --chip:#eef2ff;
+      --line:#e7eaf3;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;
+      background:var(--bg);
+      color:var(--dark);
+    }
+    .wrap{max-width:680px;margin:0 auto;padding:12px;}
+    .panel{
+      background:var(--panel);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:16px 14px 22px;
+    }
+    .main{display:flex;flex-direction:column;align-items:center;gap:10px;}
 
-  * { box-sizing: border-box; }
+    .title{font-weight:950;font-size:22px;margin:0;text-align:center;letter-spacing:.2px;}
 
-  body {
-    margin: 0;
-    font-family: system-ui, -apple-system, "Noto Sans JP", sans-serif;
-    background: var(--bg);
-    color: var(--dark);
-  }
+    /* モードボタン */
+    .modes{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:2px 0;}
+    .modeBtn{
+      border:1px solid var(--line);background:#fff;color:var(--dark);
+      padding:10px 14px;border-radius:999px;font-weight:900;font-size:14px;
+      font-family:inherit;cursor:pointer;min-width:110px;
+      transition:background .15s,border-color .15s;
+    }
+    .modeBtn.active{background:var(--chip);border-color:rgba(43,102,255,.35);}
+    .modeBtn:active{transform:translateY(1px);}
+    .modeBtn:disabled{opacity:.55;cursor:default;}
 
-  .wrap {
-    max-width: 920px;
-    margin: 0 auto;
-    padding: 12px;
-  }
+    /* トグルボタン */
+    .toggles{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0;}
+    .togBtn{
+      border:2px solid #ccc;border-radius:999px;background:#fff;
+      color:var(--muted);font-family:inherit;font-size:13px;font-weight:900;
+      padding:6px 14px;cursor:pointer;
+      transition:background .15s,color .15s,border-color .15s;
+    }
+    .togBtn.on{background:var(--dark);color:#fff;border-color:var(--dark);}
 
-  .panel {
-    background: var(--panel);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 14px 12px 18px;
-  }
+    /* 時計 */
+    .clock-wrap{
+      position:relative;width:min(60vh,86vw);aspect-ratio:1/1;
+      margin:4px auto 2px;
+    }
+    .clock-wrap img,.clock-wrap svg.overlay{
+      position:absolute;inset:0;width:100%;height:100%;
+      pointer-events:none;user-select:none;-webkit-user-drag:none;
+    }
+    .hand{
+      transform-origin:50% 50%;
+      transition:transform 1.2s cubic-bezier(.5,0,.2,1);
+    }
 
-  .title {
-    font-weight: 950;
-    font-size: 22px;
-    margin: 0 0 12px;
-    text-align: center;
-    line-height: 1.4;
-  }
+    /* 答えテキスト */
+    .readout{
+      text-align:center;font-size:clamp(26px,5vw,38px);
+      font-weight:950;letter-spacing:2px;margin:2px 0;min-height:44px;
+    }
 
-  /* ─── セレクト操作行 ─── */
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin: 4px 0 10px;
-  }
+    /* りれき */
+    .historyWrap{
+      width:min(500px,96vw);border:1px solid var(--line);border-radius:14px;
+      padding:10px 12px;background:#fff;
+    }
+    .historyTitle{font-size:13px;font-weight:900;color:var(--muted);margin-bottom:6px;text-align:left;}
+    .historyBox{display:flex;flex-wrap:wrap;gap:8px;min-height:28px;align-items:center;}
+    .histChip{
+      background:var(--chip);border:1px solid rgba(43,102,255,.22);
+      color:var(--dark);font-weight:900;font-size:13px;
+      padding:5px 10px;border-radius:999px;
+    }
+    .histEmpty{color:var(--muted);font-size:13px;font-weight:800;opacity:.8;}
 
-  .field {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--softer);
-    border-radius: 14px;
-    padding: 8px 12px;
-  }
-
-  .field label {
-    font-size: 14px;
-    font-weight: 900;
-    color: var(--muted);
-  }
-
-  .selectBtn {
-    appearance: none;
-    -webkit-appearance: none;
-    border: 0;
-    border-radius: 12px;
-    background: var(--dark);
-    color: #fff;
-    font-family: inherit;
-    font-size: 18px;
-    font-weight: 950;
-    padding: 10px 36px 10px 16px;
-    cursor: pointer;
-    background-image:
-      linear-gradient(45deg, transparent 50%, #fff 50%),
-      linear-gradient(135deg, #fff 50%, transparent 50%);
-    background-position:
-      calc(100% - 18px) calc(50% - 3px),
-      calc(100% - 12px) calc(50% - 3px);
-    background-size: 6px 6px, 6px 6px;
-    background-repeat: no-repeat;
-  }
-
-  .stepBtn {
-    border: 0;
-    border-radius: 12px;
-    background: var(--dark);
-    color: #fff;
-    font-family: inherit;
-    font-size: 22px;
-    font-weight: 950;
-    width: 48px;
-    height: 48px;
-    cursor: pointer;
-    line-height: 1;
-  }
-  .stepBtn:hover  { background: #333; }
-  .stepBtn:active { transform: scale(0.93); }
-
-  .resetBtn {
-    border: 0;
-    border-radius: 12px;
-    background: var(--soft);
-    color: var(--dark);
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 950;
-    padding: 12px 18px;
-    cursor: pointer;
-  }
-  .resetBtn:hover { background: #e0e0e0; }
-
-  /* ─── オンオフトグル行 ─── */
-  .toggles {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-    margin: 0 0 10px;
-  }
-
-  .togBtn {
-    border: 2px solid #ccc;
-    border-radius: 999px;
-    background: #fff;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 900;
-    padding: 6px 14px;
-    cursor: pointer;
-    transition: background .15s, color .15s, border-color .15s;
-  }
-  .togBtn.on {
-    background: var(--dark);
-    color: #fff;
-    border-color: var(--dark);
-  }
-
-  /* ─── 時計 ─── */
-  .clock-wrap {
-    position: relative;
-    width: min(60vh, 92vw);
-    aspect-ratio: 1 / 1;
-    margin: 8px auto 12px;
-  }
-  .clock-wrap img,
-  .clock-wrap svg.overlay {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    user-select: none;
-    -webkit-user-drag: none;
-  }
-  .hand {
-    transform-origin: 50% 50%;
-    transition: transform 1.2s cubic-bezier(.5,.0,.2,1);
-  }
-
-  /* ─── 時刻テキスト ─── */
-  .readout {
-    text-align: center;
-    font-size: clamp(28px, 5vw, 40px);
-    font-weight: 950;
-    letter-spacing: 4px;
-    margin: 8px 0 0;
-  }
-
-  @media (max-width: 560px) {
-    .wrap { padding: 6px; }
-    .panel { padding: 10px 8px 14px; }
-    .title { font-size: 20px; }
-    .selectBtn { font-size: 16px; padding: 9px 32px 9px 14px; }
-    .resetBtn { font-size: 14px; padding: 10px 14px; }
-    .stepBtn { font-size: 20px; width: 42px; height: 42px; }
-  }
-</style>
-<link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#F59E0B" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="とけい" />
-<link rel="apple-touch-icon" href="icons/icon-180.png" />
+    /* ボタンエリア */
+    .btnArea{width:min(500px,96vw);display:flex;flex-direction:column;gap:10px;}
+    .mainBtn{
+      width:100%;border:0;border-radius:14px;padding:14px;
+      font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;
+      background:var(--accent);color:#fff;
+      box-shadow:0 8px 16px rgba(43,102,255,.18);
+      transition:background .15s,opacity .15s;
+    }
+    .mainBtn:hover{background:#1f4fe0;}
+    .mainBtn:active{transform:translateY(1px);}
+    .mainBtn:disabled{opacity:.65;cursor:default;}
+    .resetBtn{
+      width:100%;border:0;border-radius:14px;padding:12px;
+      font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;
+      background:var(--soft);color:var(--dark);
+    }
+    .resetBtn:hover{background:#e0e0e0;}
+    .resetBtn:disabled{opacity:.55;cursor:default;}
+  </style>
 </head>
 <body>
 <div class="wrap">
   <div class="panel">
+    <div class="main">
 
-    <h1 class="title">なんじ とけい（ぜんぶのふん）</h1>
+      <div class="title">とけいビンゴ</div>
 
-    <!-- 操作行 -->
-    <div class="controls">
-      <div class="field">
-        <select id="sel-hour" class="selectBtn">
-          <option value="0" selected>0じ</option>
-          <option value="1">1じ</option>
-          <option value="2">2じ</option>
-          <option value="3">3じ</option>
-          <option value="4">4じ</option>
-          <option value="5">5じ</option>
-          <option value="6">6じ</option>
-          <option value="7">7じ</option>
-          <option value="8">8じ</option>
-          <option value="9">9じ</option>
-          <option value="10">10じ</option>
-          <option value="11">11じ</option>
-          <option value="12">12じ</option>
-        </select>
+      <!-- モード（切替してもりれき・プールはリセットしない） -->
+      <div class="modes">
+        <button class="modeBtn active" id="modeHour">○じだけ</button>
+        <button class="modeBtn"        id="modeHalf">○じはんだけ</button>
+        <button class="modeBtn"        id="modeAll">ぜんぶ</button>
       </div>
-      <div class="field">
-        <button id="btn-minus" class="stepBtn">−</button>
-        <select id="sel-min" class="selectBtn">
-          <!-- 0〜59 は JS で生成 -->
-        </select>
-        <button id="btn-plus" class="stepBtn">＋</button>
+
+      <!-- トグル -->
+      <div class="toggles">
+        <button class="togBtn on" id="tog-answer">こたえ</button>
+        <button class="togBtn on" id="tog-donut-all">輪ごと</button>
+        <button class="togBtn on" id="tog-donut-text">○じだけ</button>
+        <button class="togBtn on" id="tog-nums">すうじ</button>
       </div>
-      <button id="btn-reset" class="resetBtn">リセット</button>
+
+      <!-- 時計 -->
+      <div class="clock-wrap">
+        <img src="clock-face.png" alt="文字盤">
+
+        <!-- すうじ隠し -->
+        <svg class="overlay" id="overlay-nums" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="36" fill="none" stroke="white" stroke-width="15"/>
+        </svg>
+
+        <!-- 輪ごと隠し -->
+        <svg class="overlay" id="overlay-donut-all" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="30" fill="white"/>
+        </svg>
+
+        <!-- ○じだけ隠し（外縁・区切り線は再描画） -->
+        <svg class="overlay" id="overlay-donut-text" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="24" fill="white"/>
+          <circle cx="50" cy="50" r="23.7" fill="none" stroke="#111" stroke-width="0.25"/>
+          <circle cx="50" cy="50" r="16.2" fill="none" stroke="#111" stroke-width="0.22"/>
+          <line x1="50"    y1="33.8"  x2="50"    y2="26.3"  stroke="#111" stroke-width="0.2"/>
+          <line x1="58.10" y1="35.97" x2="61.85" y2="29.48" stroke="#111" stroke-width="0.2"/>
+          <line x1="64.03" y1="41.90" x2="70.52" y2="38.15" stroke="#111" stroke-width="0.2"/>
+          <line x1="66.20" y1="50"    x2="73.70" y2="50"    stroke="#111" stroke-width="0.2"/>
+          <line x1="64.03" y1="58.10" x2="70.52" y2="61.85" stroke="#111" stroke-width="0.2"/>
+          <line x1="58.10" y1="64.03" x2="61.85" y2="70.52" stroke="#111" stroke-width="0.2"/>
+          <line x1="50"    y1="66.20" x2="50"    y2="73.70" stroke="#111" stroke-width="0.2"/>
+          <line x1="41.90" y1="64.03" x2="38.15" y2="70.52" stroke="#111" stroke-width="0.2"/>
+          <line x1="35.97" y1="58.10" x2="29.48" y2="61.85" stroke="#111" stroke-width="0.2"/>
+          <line x1="33.80" y1="50"    x2="26.30" y2="50"    stroke="#111" stroke-width="0.2"/>
+          <line x1="35.97" y1="41.90" x2="29.48" y2="38.15" stroke="#111" stroke-width="0.2"/>
+          <line x1="41.90" y1="35.97" x2="38.15" y2="29.48" stroke="#111" stroke-width="0.2"/>
+        </svg>
+
+        <img id="hand-long"  class="hand" src="clock-hand-long.png"  alt="長針">
+        <img id="hand-short" class="hand" src="clock-hand-short.png" alt="短針">
+      </div>
+
+      <!-- 答えテキスト -->
+      <div class="readout" id="readout">いま なんじ？</div>
+
+      <!-- りれき -->
+      <div class="historyWrap">
+        <div class="historyTitle">りれき</div>
+        <div class="historyBox" id="historyBox"></div>
+      </div>
+
+      <!-- ボタン -->
+      <div class="btnArea">
+        <button class="mainBtn"  id="mainBtn">こたえ</button>
+        <button class="resetBtn" id="resetBtn">リセット</button>
+      </div>
+
     </div>
-
-    <!-- オンオフトグル -->
-    <div class="toggles">
-      <button class="togBtn on" id="tog-answer">こたえ</button>
-      <button class="togBtn on" id="tog-donut-all">輪ごと</button>
-      <button class="togBtn on" id="tog-donut-text">○じだけ</button>
-      <button class="togBtn on" id="tog-nums">すうじ</button>
-    </div>
-
-    <!-- 時計 -->
-    <div class="clock-wrap">
-      <img src="clock-face.png" alt="文字盤">
-
-      <!-- 外側数字を隠すオーバーレイ（白リング stroke） -->
-      <svg class="overlay" id="overlay-nums" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="36" fill="none" stroke="white" stroke-width="15"/>
-      </svg>
-
-      <!-- 輪ごと隠すオーバーレイ（白円） -->
-      <svg class="overlay" id="overlay-donut-all" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="30" fill="white"/>
-      </svg>
-
-      <!-- ○じテキストだけ隠すオーバーレイ（白円+外縁・内縁・区切り線を再描画） -->
-      <!-- 実測: 内縁 r=16.2 / 外縁 r=23.7 / 線幅 約0.2(3〜4px@1600) -->
-      <svg class="overlay" id="overlay-donut-text" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="24" fill="white"/>
-        <circle cx="50" cy="50" r="23.7" fill="none" stroke="#111" stroke-width="0.25"/>
-        <circle cx="50" cy="50" r="16.2" fill="none" stroke="#111" stroke-width="0.22"/>
-        <!-- 12時から30°間隔で12本の区切り線 (r_inner=16.2, r_outer=23.7) -->
-        <line x1="50"    y1="33.8"  x2="50"    y2="26.3"  stroke="#111" stroke-width="0.2"/>
-        <line x1="58.10" y1="35.97" x2="61.85" y2="29.48" stroke="#111" stroke-width="0.2"/>
-        <line x1="64.03" y1="41.90" x2="70.52" y2="38.15" stroke="#111" stroke-width="0.2"/>
-        <line x1="66.20" y1="50"    x2="73.70" y2="50"    stroke="#111" stroke-width="0.2"/>
-        <line x1="64.03" y1="58.10" x2="70.52" y2="61.85" stroke="#111" stroke-width="0.2"/>
-        <line x1="58.10" y1="64.03" x2="61.85" y2="70.52" stroke="#111" stroke-width="0.2"/>
-        <line x1="50"    y1="66.20" x2="50"    y2="73.70" stroke="#111" stroke-width="0.2"/>
-        <line x1="41.90" y1="64.03" x2="38.15" y2="70.52" stroke="#111" stroke-width="0.2"/>
-        <line x1="35.97" y1="58.10" x2="29.48" y2="61.85" stroke="#111" stroke-width="0.2"/>
-        <line x1="33.80" y1="50"    x2="26.30" y2="50"    stroke="#111" stroke-width="0.2"/>
-        <line x1="35.97" y1="41.90" x2="29.48" y2="38.15" stroke="#111" stroke-width="0.2"/>
-        <line x1="41.90" y1="35.97" x2="38.15" y2="29.48" stroke="#111" stroke-width="0.2"/>
-      </svg>
-
-      <img id="hand-long"  class="hand" src="clock-hand-long.png"  alt="長針">
-      <img id="hand-short" class="hand" src="clock-hand-short.png" alt="短針">
-    </div>
-
-    <p class="readout" id="readout">0 じ ちょうど</p>
-
   </div>
 </div>
 
 <script>
-  const handShort = document.getElementById('hand-short');
-  const handLong  = document.getElementById('hand-long');
-  const selHour   = document.getElementById('sel-hour');
-  const selMin    = document.getElementById('sel-min');
-  const readout   = document.getElementById('readout');
-  const btnReset  = document.getElementById('btn-reset');
-  const btnPlus   = document.getElementById('btn-plus');
-  const btnMinus  = document.getElementById('btn-minus');
+(() => {
+  // ─── DOM参照 ───
+  const handShort  = document.getElementById('hand-short');
+  const handLong   = document.getElementById('hand-long');
+  const readout    = document.getElementById('readout');
+  const mainBtn    = document.getElementById('mainBtn');
+  const resetBtn   = document.getElementById('resetBtn');
+  const historyBox = document.getElementById('historyBox');
+  const modeHour   = document.getElementById('modeHour');
+  const modeHalf   = document.getElementById('modeHalf');
+  const modeAll    = document.getElementById('modeAll');
 
-  // 分の読み方（1・3・6・8末尾、10の倍数は「ぷん」）
-  function readMin(m) {
-    if (m === 0) return '0ふん';
-    const ones = m % 10;
-    return (ones === 0 || ones === 1 || ones === 3 || ones === 6 || ones === 8)
-      ? `${m}ぷん` : `${m}ふん`;
+  const HIRA = [
+    "","いちじ","にじ","さんじ","よじ","ごじ",
+    "ろくじ","しちじ","はちじ","くじ",
+    "じゅうじ","じゅういちじ","じゅうにじ"
+  ];
+  function timeToDisplay(h, m){
+    return HIRA[h] + (m === 0 ? "" : "はん");
   }
 
-  // ふんの選択肢を生成（0〜59）
-  for (let m = 0; m < 60; m++) {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = readMin(m);
-    selMin.appendChild(opt);
+  // ─── 効果音 ───
+  let audioCtx = null;
+  function getCtx(){
+    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
+    return audioCtx;
+  }
+  function beep({freq=880, dur=0.08, type="sine", gain=0.08} = {}){
+    const ctx = getCtx(), t0 = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+  function sfxAnswer(){ beep({freq:1046, dur:0.085, type:"triangle", gain:0.09}); }
+  function sfxNext(){
+    beep({freq:659, dur:0.07, type:"sine", gain:0.07});
+    setTimeout(()=>beep({freq:784, dur:0.07, type:"sine", gain:0.07}), 90);
   }
 
+  // ─── 針アニメーション ───
   let curMinutes = 0;
+  let animating  = false;
+  let curH = 1, curM = 0;
 
-  function render() {
-    handLong .style.transform = `rotate(${curMinutes * 6}deg)`;
+  function render(){
+    handLong.style.transform  = `rotate(${curMinutes * 6}deg)`;
     handShort.style.transform = `rotate(${curMinutes * 0.5}deg)`;
   }
 
-  function formatReadout(h, m) {
-    return `${h} じ ${readMin(m)}`;
-  }
-
-  function syncSelects() {
-    const total = ((curMinutes % 720) + 720) % 720;
-    const h = Math.floor(total / 60);
-    const m = total % 60;
-    selHour.value = String(h);
-    selMin.value  = String(m);
-    readout.textContent = formatReadout(h, m);
-  }
-
-  function setTime(hour, minute) {
+  function setTimeInstant(hour, minute){
+    handLong.style.transition  = 'none';
+    handShort.style.transition = 'none';
     const targetClock = (hour % 12) * 60 + minute;
     const curClock    = ((curMinutes % 720) + 720) % 720;
-    const delta = (((targetClock - curClock) % 720) + 720) % 720;
-    const dur = Math.min(3500, Math.max(350, delta * 16.5));
-    handLong .style.transitionDuration = dur + 'ms';
+    const delta       = (((targetClock - curClock) % 720) + 720) % 720;
+    curMinutes += delta;
+    curH = hour; curM = minute;
+    render();
+    requestAnimationFrame(()=>{
+      handLong.style.transition  = 'transform 1.2s cubic-bezier(.5,0,.2,1)';
+      handShort.style.transition = 'transform 1.2s cubic-bezier(.5,0,.2,1)';
+    });
+  }
+
+  function setTimeAnimated(hour, minute){
+    animating = true;
+    lockUI(true);
+    const targetClock = (hour % 12) * 60 + minute;
+    const curClock    = ((curMinutes % 720) + 720) % 720;
+    let delta = (((targetClock - curClock) % 720) + 720) % 720;
+    if (delta === 0) delta = 720;
+    const dur = Math.min(2200, Math.max(600, delta * 9));
+    handLong.style.transitionDuration  = dur + 'ms';
     handShort.style.transitionDuration = dur + 'ms';
     curMinutes += delta;
+    curH = hour; curM = minute;
     render();
-    readout.textContent = formatReadout(hour, minute);
+    setTimeout(()=>{ animating = false; lockUI(false); }, dur + 80);
   }
 
-  function step(delta) {
-    handLong .style.transitionDuration = '300ms';
-    handShort.style.transitionDuration = '300ms';
-    curMinutes += delta;
-    render();
-    syncSelects();
+  // ─── ビンゴ状態 ───
+  let showingAnswer      = false;
+  let loggedThisQuestion = false;
+  let history            = [];
+  let currentMode        = 'hour';
+  const pools = { hour:[], half:[], all:[] };
+
+  function buildPoolItems(mode){
+    const hours = Array.from({length:12}, (_,i) => i+1);
+    if (mode === 'hour') return hours.map(h => ({h, m:0}));
+    if (mode === 'half') return hours.map(h => ({h, m:30}));
+    return hours.flatMap(h => [{h, m:0}, {h, m:30}]);
+  }
+  function shuffle(arr){
+    for (let i = arr.length-1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  function ensurePool(mode){
+    if (pools[mode].length === 0) pools[mode] = shuffle(buildPoolItems(mode));
+  }
+  function pickNext(){
+    ensurePool(currentMode);
+    return pools[currentMode].shift();
   }
 
-  selHour.addEventListener('change', () => setTime(+selHour.value, +selMin.value));
-  selMin .addEventListener('change', () => setTime(+selHour.value, +selMin.value));
-  btnPlus .addEventListener('click', () => step(+1));
-  btnMinus.addEventListener('click', () => step(-1));
-
-  btnReset.addEventListener('click', () => {
-    handLong .style.transition = 'none';
-    handShort.style.transition = 'none';
-    curMinutes = 0;
-    render();
-    selHour.value = '0';
-    selMin.value  = '0';
-    readout.textContent = '0 じ 0ふん';
-    requestAnimationFrame(() => {
-      handLong .style.transition = '';
-      handShort.style.transition = '';
+  function renderHistory(){
+    historyBox.innerHTML = '';
+    if (history.length === 0){
+      const d = document.createElement('div');
+      d.className = 'histEmpty'; d.textContent = 'まだ でてないよ';
+      historyBox.appendChild(d);
+      return;
+    }
+    history.forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = 'histChip'; chip.textContent = timeToDisplay(t.h, t.m);
+      historyBox.appendChild(chip);
     });
+  }
+
+  function lockUI(locked){
+    mainBtn.disabled  = locked;
+    resetBtn.disabled = locked;
+    modeHour.disabled = locked;
+    modeHalf.disabled = locked;
+    modeAll.disabled  = locked;
+  }
+
+  function showAnswer(){
+    readout.textContent = timeToDisplay(curH, curM);
+    showingAnswer       = true;
+    mainBtn.textContent = 'つぎへ';
+    if (!loggedThisQuestion){
+      history.push({h:curH, m:curM});
+      renderHistory();
+      loggedThisQuestion = true;
+    }
+  }
+
+  function goNext(){
+    const nxt = pickNext();
+    readout.textContent    = 'いま なんじ？';
+    showingAnswer          = false;
+    mainBtn.textContent    = 'こたえ';
+    loggedThisQuestion     = false;
+    setTimeAnimated(nxt.h, nxt.m);
+  }
+
+  mainBtn.addEventListener('click', () => {
+    getCtx();
+    if (animating) return;
+    if (!showingAnswer){ sfxAnswer(); showAnswer(); }
+    else               { sfxNext();   goNext();     }
   });
 
-  // ─── トグル ───
-  function setupToggle(btnId, targetId, isReadout) {
-    const btn = document.getElementById(btnId);
+  // リセット：全プール・りれきを初期化
+  resetBtn.addEventListener('click', () => {
+    if (animating) return;
+    pools.hour = shuffle(buildPoolItems('hour'));
+    pools.half = shuffle(buildPoolItems('half'));
+    pools.all  = shuffle(buildPoolItems('all'));
+    history = []; showingAnswer = false; loggedThisQuestion = false;
+    mainBtn.textContent = 'こたえ';
+    readout.textContent = 'いま なんじ？';
+    renderHistory();
+    const nxt = pickNext();
+    setTimeInstant(nxt.h, nxt.m);
+  });
+
+  // モード切替：プール・りれきはそのまま
+  function setMode(m){
+    currentMode = m;
+    modeHour.classList.toggle('active', m === 'hour');
+    modeHalf.classList.toggle('active', m === 'half');
+    modeAll.classList.toggle('active',  m === 'all');
+  }
+  modeHour.addEventListener('click', () => { if (!animating) setMode('hour'); });
+  modeHalf.addEventListener('click', () => { if (!animating) setMode('half'); });
+  modeAll.addEventListener('click',  () => { if (!animating) setMode('all');  });
+
+  // トグル（tanemaki-tokei-full と同じ論理）
+  function setupToggle(btnId, targetId, isReadout){
+    const btn    = document.getElementById(btnId);
     const target = document.getElementById(targetId);
     let on = true;
-
-    // 隠す用オーバーレイは「onのとき非表示（=見えない）」という逆論理
-    // こたえは「onのとき表示」という正論理
-    if (!isReadout) target.style.display = 'none'; // オーバーレイは初期非表示
-
+    if (!isReadout) target.style.display = 'none';
     btn.addEventListener('click', () => {
       on = !on;
       btn.classList.toggle('on', on);
-      if (isReadout) {
-        target.style.visibility = on ? 'visible' : 'hidden';
-      } else {
-        // オーバーレイ表示＝その要素を「隠す」
-        target.style.display = on ? 'none' : 'block';
-      }
+      if (isReadout){ target.style.visibility = on ? 'visible' : 'hidden'; }
+      else          { target.style.display    = on ? 'none'    : 'block';  }
     });
   }
+  setupToggle('tog-answer',     'readout',            true);
+  setupToggle('tog-donut-all',  'overlay-donut-all',  false);
+  setupToggle('tog-donut-text', 'overlay-donut-text', false);
+  setupToggle('tog-nums',       'overlay-nums',        false);
 
-  setupToggle('tog-answer',      'readout',            true);   // こたえ
-  setupToggle('tog-donut-all',  'overlay-donut-all',  false);  // 輪ごと
-  setupToggle('tog-donut-text', 'overlay-donut-text', false);  // ○じだけ
-  setupToggle('tog-nums',       'overlay-nums',        false);  // すうじ
-
-  setTime(0, 0);
+  // 初期化
+  pools.hour = shuffle(buildPoolItems('hour'));
+  pools.half = shuffle(buildPoolItems('half'));
+  pools.all  = shuffle(buildPoolItems('all'));
+  renderHistory();
+  const first = pickNext();
+  setTimeInstant(first.h, first.m);
+})();
 </script>
 </body>
 </html>
