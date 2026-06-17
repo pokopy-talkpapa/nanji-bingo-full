@@ -271,6 +271,10 @@
   function startSpin(){
     getCtx();
     spinTarget = pickNext();
+    if (spinTarget === null){
+      readout.textContent = 'ぜんぶでた！';
+      return;
+    }
     isSpinning = true;
     isStopping = false;
 
@@ -321,6 +325,9 @@
   let history       = [];
   let currentMode   = 'hour';
   const pools = { hour:[], half:[], all:[] };
+  let shownSet = new Set(); // リセットまで出た時刻を記録
+
+  function timeKey(h, m){ return `${h}:${m}`; }
 
   function buildPoolItems(mode){
     const hours = Array.from({length:12}, (_,i) => i+1);
@@ -336,10 +343,16 @@
     return arr;
   }
   function ensurePool(mode){
-    if (pools[mode].length === 0) pools[mode] = shuffle(buildPoolItems(mode));
+    if (pools[mode].length === 0){
+      const remaining = buildPoolItems(mode).filter(t => !shownSet.has(timeKey(t.h, t.m)));
+      pools[mode] = shuffle(remaining);
+    }
   }
   function pickNext(){
+    // モード切替後にプール内の出済み時刻を除去してから補充
+    pools[currentMode] = pools[currentMode].filter(t => !shownSet.has(timeKey(t.h, t.m)));
     ensurePool(currentMode);
+    if (pools[currentMode].length === 0) return null; // 全時刻出た
     return pools[currentMode].shift();
   }
 
@@ -370,6 +383,7 @@
     sfxAnswer();
     const jp = timeToDisplay(curH, curM);
     readout.textContent = jp;
+    shownSet.add(timeKey(curH, curM));
     history.push({h:curH, m:curM});
     renderHistory();
     mainBtn.textContent = 'スタート';
@@ -389,6 +403,7 @@
   // ─── リセット ───
   resetBtn.addEventListener('click', () => {
     if (isSpinning || isStopping) return;
+    shownSet = new Set();
     pools.hour = shuffle(buildPoolItems('hour'));
     pools.half = shuffle(buildPoolItems('half'));
     pools.all  = shuffle(buildPoolItems('all'));
